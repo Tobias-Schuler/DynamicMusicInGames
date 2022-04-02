@@ -17,6 +17,7 @@ public enum Denominators {
     Sixteen = 16,
 }
 
+//holds audio files and data in regards to them like track to be on, BPM and time signature
 [System.Serializable]
 public class SoundWrapper {
     /** numeric values for the following notes: 
@@ -43,6 +44,9 @@ public class SoundWrapper {
     public int BPM = 120;
     [Tooltip("The note to use as the BPM basis. Default refers to the time signature denominator.")]
     public BPMBases basis;
+    [Tooltip("The pitch to alter playback speed.")]
+    [Range(0.1f, 3)]
+    public float pitch = 1;
 
     [Header("Time Signature")]
     public int numerator = 4;
@@ -55,7 +59,6 @@ public class SoundWrapper {
 
     //returns the time for one measure according to specified note basis and time signature in seconds
     public double MeasureFrequency () {
-
         if(basis == 0) {                                //for common case of denominator and bpm basis are the same
             return numerator * NoteFrequency();
         } else {                                        //for uncommon cases where the bpm basis can be ambiguous like 6/8
@@ -63,6 +66,7 @@ public class SoundWrapper {
             return noteBase * NoteFrequency();
         }
     }
+
 }
 
 
