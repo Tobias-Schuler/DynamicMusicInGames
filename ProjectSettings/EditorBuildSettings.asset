@@ -5,7 +5,28 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 1
+  - enabled: 0
     path: Assets/Scenes/SampleScene.unity
     guid: 2cda990e2423bbf4892e6590ba056729
+  - enabled: 1
+    path: Assets/Scenes/SelectionMenu.unity
+    guid: 10ba0408e0f1ae7468e63bc994324ec9
+  - enabled: 1
+    path: Assets/Scenes/1 - Layering/1Layering.unity
+    guid: a6f71cd3bff15a24b8109c77b05084e0
+  - enabled: 1
+    path: Assets/Scenes/0 - Basics/0Basics.unity
+    guid: 4d01cbcea92bb124e9b78308b3902472
+  - enabled: 1
+    path: Assets/Scenes/2 - Quantized/2Quantized.unity
+    guid: 6c7e51229ab8c7c4ca3642151a6a44c7
+  - enabled: 1
+    path: Assets/Scenes/3 - Fades/3Fades.unity
+    guid: 1948360a4a9c9654399f1d47a97b6fd5
+  - enabled: 1
+    path: Assets/Scenes/4 - Crossfade/4Crossfade.unity
+    guid: c23da4d0c021ce149ae5b74e187c28e4
+  - enabled: 1
+    path: Assets/Scenes/5 - Pitch + Transition/5PitchTransition.unity
+    guid: bdbe3918905015c458550624bf15a950
   m_configObjects: {}

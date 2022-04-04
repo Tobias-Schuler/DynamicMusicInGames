@@ -15,6 +15,9 @@ public enum FadeType {
 //represents a single track that takes care of timing audio files after one another and applying fades 
 public class Track : MonoBehaviour {
 
+    int trackNumber = 0;
+    AudioVisualizer visualizer;
+
     List<SoundWrapper> sounds = new List<SoundWrapper>();
     List<AudioSource> sources = new List<AudioSource>();
 
@@ -33,6 +36,14 @@ public class Track : MonoBehaviour {
     double startFadeTime = 0; //absolute time when fade started
     double fadeDuration = 0;
     FadeType fadeState = FadeType.None;
+
+    public void SetTrackNumber (int t) {
+        trackNumber = t;
+    }
+
+    public void SetVisualizer (AudioVisualizer v) {
+        visualizer = v;
+    }
 
     public void AddSound (SoundWrapper s) {
         sounds.Add(s);
@@ -53,6 +64,13 @@ public class Track : MonoBehaviour {
         }
     }
 
+    void FixNextTiming () {
+        double currentAudioTime = AudioSettings.dspTime;
+        if(currentAudioTime > nextAudioTime) {
+            nextAudioTime = currentAudioTime;
+        }
+    }
+
     public void PlayOnce (string name) {
         PlayOnce(0, name);
     }
@@ -60,13 +78,54 @@ public class Track : MonoBehaviour {
     //plays an audio file on next timing
     public void PlayOnce (double delay, string name) {
         AudioSource audio = GetAudioByName(name);
+
+        float audioDuration = audio.clip.length / GetPitch(audio);
+
+        FixNextTiming();
+
         audio.PlayScheduled(nextAudioTime + delay);
-        UpdateNextTiming((audio.clip.length / GetPitch(audio)) + delay);
+
+        visualizer.SpawnAudioBlock(trackNumber, name, audioDuration, nextAudioTime + delay);
+        UpdateNextTiming(audioDuration + delay);
     }
 
     public void PlayWithTiming (double timing, string name) {
-        AudioSource audio = GetAudioByName(name);
-        audio.PlayScheduled(timing);
+        if(!IsPlaying()) {
+            AudioSource audio = GetAudioByName(name);
+            audio.PlayScheduled(timing);
+
+            float audioDuration = audio.clip.length / GetPitch(audio);
+            visualizer.SpawnAudioBlock(trackNumber, name, audioDuration, timing);
+        }
+    }
+
+    public void PlayWithTiming (double timing, params string[] names) {
+
+        if(!IsPlaying()) {
+
+            AudioSource audio = GetAudioByName(names[0]);
+            double nextTiming = timing;
+            audio.PlayScheduled(nextTiming);
+            float audioDuration = audio.clip.length / GetPitch(audio);
+            nextTiming += audioDuration;
+            visualizer.SpawnAudioBlock(trackNumber, names[0], audioDuration, timing);
+
+            for(int i = 1; i < names.Length; i++) {
+                AudioSource nextAudio = GetAudioByName(names[i]);
+                nextAudio.PlayScheduled(nextTiming);
+                audioDuration = nextAudio.clip.length / GetPitch(nextAudio);
+
+                visualizer.SpawnAudioBlock(trackNumber, names[i], audioDuration, nextTiming);
+            }
+        }
+
+    }
+
+    public bool IsPlaying () {
+        foreach(AudioSource s in sources) {
+            if(s.isPlaying) return true;
+        }
+        return false;
     }
 
     public void Loop (double delay, params string[] names) {
@@ -136,7 +195,6 @@ public class Track : MonoBehaviour {
                 AudioSource audioToPlay = sources[soundIndex];
                 audioToPlay.PlayScheduled(nextAudioTime);
 
-
                 startAudioTime = nextAudioTime;
 
                 float pitch = GetPitch(audioToPlay);
@@ -144,7 +202,13 @@ public class Track : MonoBehaviour {
                 currentNoteFrequency = s.NoteFrequency() / pitch;
                 currentMeasureFrequency = s.MeasureFrequency() / pitch;
 
-                UpdateNextTiming(audioToPlay.clip.length / pitch); //set next time for another audio file to play when the newly scheduled one ends
+                float audioDuration = audioToPlay.clip.length / pitch;
+
+                //visualize name, length, BPM and time signature
+                string info = s.name + " - " + audioDuration.ToString("F2") + "s at " + s.BPM + " BPM" + " in " + s.numerator + "/" + ((int) s.denominator);
+                visualizer.SpawnAudioBlock(trackNumber, info, audioDuration, nextAudioTime);
+
+                UpdateNextTiming(audioDuration); //set next time for another audio file to play when the newly scheduled one ends
 
                 //loop handling
                 if(!looping) indexToPlay++;
@@ -156,14 +220,24 @@ public class Track : MonoBehaviour {
     //https://johnleonardfrench.com/ultimate-guide-to-playscheduled-in-unity/
     public double GetNextNoteTiming () {
         double currentAudioTime = AudioSettings.dspTime;
-        double remainder = (currentAudioTime - startAudioTime) % currentNoteFrequency;
-        return currentAudioTime + (currentNoteFrequency - remainder);
+        if(currentNoteFrequency != 0) {
+            double remainder = (currentAudioTime - startAudioTime) % currentNoteFrequency;
+            return currentAudioTime + (currentNoteFrequency - remainder);
+        }
+        return currentAudioTime; //fallback if a track has not played music yet
     }
 
     public double GetNextMeasureTiming () {
         double currentAudioTime = AudioSettings.dspTime;
-        double remainder = (currentAudioTime - startAudioTime) % currentMeasureFrequency;
-        return currentAudioTime + (currentMeasureFrequency - remainder);
+        if(currentMeasureFrequency != 0) {
+            double remainder = (currentAudioTime - startAudioTime) % currentMeasureFrequency;
+            return currentAudioTime + (currentMeasureFrequency - remainder);
+        }
+        return currentAudioTime;
+    }
+
+    public FadeType GetCurrentFadeType () {
+        return fadeState;
     }
 
     private void UpdateFade () {
@@ -208,12 +282,29 @@ public class Track : MonoBehaviour {
         }
     }
 
+    public void SetVolume (float volume) {
+        UpdateVolume(volume);
+    }
+
+    public void Mute () {
+        foreach(AudioSource s in sources) {
+            s.mute = true;
+        }
+    }
+
+    public void Unmute () {
+        foreach(AudioSource s in sources) {
+            s.mute = false;
+        }
+    }
+
     public void Fade (double duration, FadeType type) {
         //prevent issuing a fade when one is already happening
         if(fadeState == FadeType.None) {
             startFadeTime = AudioSettings.dspTime;
             fadeState = type;
             fadeDuration = duration;
+            visualizer.SpawnFadeBlock(trackNumber, type, fadeDuration, startFadeTime);
         }
     }
 
